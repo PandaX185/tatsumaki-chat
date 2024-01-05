@@ -1,19 +1,19 @@
-package db
+package database
 
 import (
 	"database/sql"
-	"log"
 	"os"
 
 	_ "github.com/lib/pq"
 )
 
-func InitDB() {
+func InitDB() (*sql.DB, error) {
 	connectionStr := os.Getenv("DB_URL")
 
 	db, err := sql.Open("postgres", connectionStr)
 	if err != nil {
-		log.Fatalf("Error opening database: %v", err)
+		return nil, err
 	}
-	defer db.Close()
+
+	return db, nil
 }

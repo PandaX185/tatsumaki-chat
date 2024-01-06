@@ -17,7 +17,9 @@ func (uc *UserController) SetupController(router *gin.Engine) {
 }
 
 func NewUserController(r repository.Repository) *UserController {
-	return &UserController{r}
+	return &UserController{
+		Repository: r,
+	}
 }
 
 func (uc *UserController) CreateUser(c *gin.Context) {

@@ -6,6 +6,7 @@ import (
 
 	"github.com/PandaX185/tatsumaki-chat/pkg/controllers"
 	"github.com/PandaX185/tatsumaki-chat/pkg/database"
+	"github.com/PandaX185/tatsumaki-chat/pkg/kafka"
 	"github.com/PandaX185/tatsumaki-chat/pkg/middlewares"
 	"github.com/PandaX185/tatsumaki-chat/pkg/repository"
 
@@ -26,18 +27,28 @@ func main() {
 	}
 	defer db.Close()
 
+	// Initialize kafka
+	kConn, err := kafka.InitKafka()
+	if err != nil {
+		log.Fatalf("Error initializing kafka %s", err.Error())
+	}
+	defer kConn.Close()
+
 	// Create repository
 	r := repository.NewRepository(db)
 
+	router := gin.Default()
+
 	// Create controllers
 	userController := controllers.NewUserController(r)
+	chatController := controllers.NewChatController(r, kConn)
 
-	router := gin.Default()
-	// Setup middlewares
+	// Register middlewares
 	router.Use(middlewares.Auth())
 
 	// Register routes
 	userController.SetupController(router)
+	chatController.SetupController(router)
 
 	// Run server
 	router.Run(os.Getenv("API_PORT"))

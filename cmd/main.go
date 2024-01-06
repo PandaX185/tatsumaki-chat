@@ -6,6 +6,7 @@ import (
 
 	"github.com/PandaX185/tatsumaki-chat/pkg/controllers"
 	"github.com/PandaX185/tatsumaki-chat/pkg/database"
+	"github.com/PandaX185/tatsumaki-chat/pkg/middlewares"
 	"github.com/PandaX185/tatsumaki-chat/pkg/repository"
 
 	"github.com/gin-gonic/gin"
@@ -31,10 +32,12 @@ func main() {
 	// Create controllers
 	userController := controllers.NewUserController(r)
 
-	// Register routes
 	router := gin.Default()
-	router.POST("/register", userController.CreateUser)
-	router.GET("/users/:username", userController.GetUser)
+	// Setup middlewares
+	router.Use(middlewares.Auth())
+
+	// Register routes
+	userController.SetupController(router)
 
 	// Run server
 	router.Run(os.Getenv("API_PORT"))

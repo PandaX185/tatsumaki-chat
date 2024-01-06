@@ -10,6 +10,12 @@ type UserController struct {
 	repository.Repository
 }
 
+func (uc *UserController) SetupController(router *gin.Engine) {
+	router.POST("/register", uc.CreateUser)
+	router.POST("/login", uc.Login)
+	router.GET("/users/:username", uc.GetUser)
+}
+
 func NewUserController(r repository.Repository) *UserController {
 	return &UserController{r}
 }
@@ -35,4 +41,20 @@ func (uc *UserController) GetUser(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"data": user})
+}
+
+func (uc *UserController) Login(c *gin.Context) {
+	var user models.User
+	if err := c.ShouldBindJSON(&user); err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	token, err := uc.Repository.Login(user.Username, user.Password)
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(200, gin.H{"token": token})
 }

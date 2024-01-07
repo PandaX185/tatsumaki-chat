@@ -27,6 +27,7 @@ type ChatController struct {
 
 func (c *ChatController) SetupController(router *gin.Engine) {
 	router.GET("ws/chat", c.OpenChat)
+	router.POST("send-message", c.SendMessage)
 }
 
 func NewChatController(r repository.Repository, kConn *kafka.Conn) *ChatController {
@@ -34,6 +35,35 @@ func NewChatController(r repository.Repository, kConn *kafka.Conn) *ChatControll
 		Repository: r,
 		KConn:      kConn,
 	}
+}
+
+func (c *ChatController) SendMessage(ctx *gin.Context) {
+	var body map[string]string
+	if err := ctx.BindJSON(&body); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
+		return
+	}
+	token := ctx.GetHeader("Authorization")
+	username, err := extractUsernameFromToken(token)
+	if err != nil {
+		ctx.AbortWithError(http.StatusUnauthorized, err)
+		return
+	}
+
+	topic := username + "-" + body["user"]
+	c.KConn.CreateTopics(kafka.TopicConfig{
+		Topic:             topic,
+		NumPartitions:     1,
+		ReplicationFactor: 1,
+	})
+
+	c.KConn.WriteMessages(kafka.Message{
+		Topic: topic,
+		Value: []byte(body["message"]),
+	})
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Message sent successfully",
+	})
 }
 
 func (c *ChatController) OpenChat(ctx *gin.Context) {
@@ -52,8 +82,9 @@ func (c *ChatController) OpenChat(ctx *gin.Context) {
 		return
 	}
 
+	topic := userToChat + "-" + username
 	c.KConn.CreateTopics(kafka.TopicConfig{
-		Topic:             userToChat + ":" + username,
+		Topic:             topic,
 		NumPartitions:     1,
 		ReplicationFactor: 1,
 	})
@@ -63,6 +94,7 @@ func (c *ChatController) OpenChat(ctx *gin.Context) {
 	for {
 		n, err := batch.Read(b)
 		if err != nil {
+			ctx.AbortWithError(http.StatusInternalServerError, err)
 			break
 		}
 		ctx.JSON(http.StatusOK, string(b[:n]))

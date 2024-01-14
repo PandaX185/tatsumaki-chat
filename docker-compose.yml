@@ -1,41 +1,27 @@
 version: '3'
 services:
-  zookeeper:
-    image: wurstmeister/zookeeper
-    ports:
-      - "2181:2181"
-    networks:
-      - tatsumaki-net
-
   kafka:
-    image: wurstmeister/kafka
+    image: landoop/fast-data-dev:latest
+    container_name: kafka
     ports:
-      - "9092:9092"
+      - 3181:3181
+      - 3040:3040
+      - 7082:7082
+      - 7083:7083
+      - 9092:9092
     environment:
-      KAFKA_ADVERTISED_LISTENERS: INSIDE://kafka:9092,OUTSIDE://localhost:9092
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INSIDE:PLAINTEXT,OUTSIDE:PLAINTEXT
-      KAFKA_LISTENERS: INSIDE://0.0.0.0:9094,OUTSIDE://0.0.0.0:9092
-      KAFKA_INTER_BROKER_LISTENER_NAME: INSIDE
-      KAFKA_CREATE_TOPICS: "tatsumaki-topic:1:1"
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    depends_on:
-      zookeeper:
-        condition: service_started
-    networks:
-        - tatsumaki-net
-
-  go-app:
-    build: .
-    ports:
-      - "8080:8080"
-    depends_on:
-      kafka:
-        condition: service_started
+      ADV_HOST: 127.0.0.1
+      RUNTESTS: 0
+      SAMPLEDATA: 0
+      BROKER_PORT: 9092
+      REST_PORT: 7082
+      CONNECT_PORT: 7083
+      ZK_PORT: 3181
+      WEB_PORT: 3040
+      REGISTRY_PORT: 8081
+    restart: always
     networks:
       - tatsumaki-net
-
 
 networks:
   tatsumaki-net:

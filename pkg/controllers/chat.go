@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/PandaX185/tatsumaki-chat/pkg/repository"
 	"github.com/gin-gonic/gin"
@@ -22,7 +25,6 @@ var upgrader = websocket.Upgrader{
 
 type ChatController struct {
 	repository.Repository
-	KConn *kafka.Conn
 }
 
 func (c *ChatController) SetupController(router *gin.Engine) {
@@ -30,10 +32,9 @@ func (c *ChatController) SetupController(router *gin.Engine) {
 	router.POST("send-message", c.SendMessage)
 }
 
-func NewChatController(r repository.Repository, kConn *kafka.Conn) *ChatController {
+func NewChatController(r repository.Repository) *ChatController {
 	return &ChatController{
 		Repository: r,
-		KConn:      kConn,
 	}
 }
 
@@ -51,16 +52,27 @@ func (c *ChatController) SendMessage(ctx *gin.Context) {
 	}
 
 	topic := username + "-" + body["user"]
-	c.KConn.CreateTopics(kafka.TopicConfig{
+	kConn, err := kafka.DialLeader(context.Background(), "tcp", os.Getenv("KAFKA_URL"), topic, 0)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	if err := kConn.CreateTopics(kafka.TopicConfig{
 		Topic:             topic,
 		NumPartitions:     1,
 		ReplicationFactor: 1,
-	})
+	}); err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 
-	c.KConn.WriteMessages(kafka.Message{
+	if _, err := kConn.WriteMessages(kafka.Message{
 		Topic: topic,
 		Value: []byte(body["message"]),
-	})
+	}); err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 	ctx.JSON(http.StatusOK, gin.H{
 		"message": "Message sent successfully",
 	})
@@ -83,24 +95,34 @@ func (c *ChatController) OpenChat(ctx *gin.Context) {
 	}
 
 	topic := userToChat + "-" + username
-	c.KConn.CreateTopics(kafka.TopicConfig{
-		Topic:             topic,
-		NumPartitions:     1,
-		ReplicationFactor: 1,
-	})
+	kConn, err := kafka.DialLeader(context.Background(), "tcp", os.Getenv("KAFKA_URL"), topic, 0)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 
-	batch := c.KConn.ReadBatch(10e3, 1e6)
+	kConn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+
+	batch := kConn.ReadBatch(10e3, 1e6)
 	b := make([]byte, 10e3)
 	for {
 		n, err := batch.Read(b)
-		if err != nil {
+		if err != nil && !errors.Is(err, io.EOF) {
 			ctx.AbortWithError(http.StatusInternalServerError, err)
 			break
 		}
 		ctx.JSON(http.StatusOK, string(b[:n]))
 	}
 
-	defer batch.Close()
+	defer func(batch *kafka.Batch) {
+		err := batch.Close()
+		if err != nil {
+		}
+	}(batch)
 }
 
 func extractUsernameFromToken(tokenString string) (string, error) {

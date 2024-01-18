@@ -1,8 +1,10 @@
 package middlewares
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"regexp"
 	"strings"
 
 	"github.com/PandaX185/tatsumaki-chat/pkg/constants"
@@ -12,7 +14,10 @@ import (
 
 func Auth() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		if c.Request.URL.Path == constants.RegisterEndpoint || c.Request.URL.Path == constants.LoginEndpoint {
+		re := regexp.MustCompile(fmt.Sprintf(`^%s`, regexp.QuoteMeta(constants.WSEndpoints)))
+		if c.Request.URL.Path == constants.RegisterEndpoint ||
+			c.Request.URL.Path == constants.LoginEndpoint ||
+			re.MatchString(c.Request.URL.Path) {
 			c.Next()
 			return
 		}

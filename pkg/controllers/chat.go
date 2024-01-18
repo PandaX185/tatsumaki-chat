@@ -16,8 +16,6 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -82,47 +80,46 @@ func (c *ChatController) OpenChat(ctx *gin.Context) {
 	userToChat := ctx.Query("user")
 	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		conn.WriteMessage(websocket.TextMessage, []byte("Error in upgrading connection: "+err.Error()))
 		return
 	}
-	defer conn.Close()
 
-	token := ctx.GetHeader("Authorization")
+	token := ctx.Query("Authorization")
 	username, err := extractUsernameFromToken(token)
 	if err != nil {
-		ctx.AbortWithError(http.StatusUnauthorized, err)
+		conn.WriteMessage(websocket.TextMessage, []byte("Error in upgrading connection: "+err.Error()))
 		return
 	}
 
-	topic := userToChat + "-" + username
+	topic := username + "-" + userToChat
 	kConn, err := kafka.DialLeader(context.Background(), "tcp", os.Getenv("KAFKA_URL"), topic, 0)
 	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+		conn.WriteMessage(websocket.TextMessage, []byte("Error in upgrading connection: "+err.Error()))
 		return
 	}
 
 	kConn.SetWriteDeadline(time.Now().Add(10 * time.Second))
-	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, err)
-		return
-	}
 
-	batch := kConn.ReadBatch(10e3, 1e6)
-	b := make([]byte, 10e3)
 	for {
-		n, err := batch.Read(b)
-		if err != nil && !errors.Is(err, io.EOF) {
-			ctx.AbortWithError(http.StatusInternalServerError, err)
+		msg, readErr := kConn.ReadMessage(1e6)
+		if errors.Is(readErr, io.EOF) {
 			break
 		}
-		ctx.JSON(http.StatusOK, string(b[:n]))
+
+		if readErr != nil {
+			conn.WriteMessage(websocket.TextMessage, []byte("Error in reading message: "+readErr.Error()))
+			break
+		}
+
+		if len(msg.Value) != 0 {
+			conn.WriteMessage(websocket.TextMessage, []byte(userToChat+": "+string(msg.Value)))
+		}
 	}
 
-	defer func(batch *kafka.Batch) {
-		err := batch.Close()
-		if err != nil {
-		}
-	}(batch)
+	defer func() {
+		conn.Close()
+		kConn.Close()
+	}()
 }
 
 func extractUsernameFromToken(tokenString string) (string, error) {

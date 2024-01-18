@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"context"
 	"errors"
+	"io"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/PandaX185/tatsumaki-chat/pkg/repository"
 	"github.com/gin-gonic/gin"
@@ -13,8 +16,6 @@ import (
 )
 
 var upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
 		return true
 	},
@@ -22,29 +23,25 @@ var upgrader = websocket.Upgrader{
 
 type ChatController struct {
 	repository.Repository
-	KConn *kafka.Conn
 }
 
 func (c *ChatController) SetupController(router *gin.Engine) {
 	router.GET("ws/chat", c.OpenChat)
+	router.POST("send-message", c.SendMessage)
 }
 
-func NewChatController(r repository.Repository, kConn *kafka.Conn) *ChatController {
+func NewChatController(r repository.Repository) *ChatController {
 	return &ChatController{
 		Repository: r,
-		KConn:      kConn,
 	}
 }
 
-func (c *ChatController) OpenChat(ctx *gin.Context) {
-	userToChat := ctx.Query("user")
-	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
-	if err != nil {
-		ctx.AbortWithError(http.StatusInternalServerError, err)
+func (c *ChatController) SendMessage(ctx *gin.Context) {
+	var body map[string]string
+	if err := ctx.BindJSON(&body); err != nil {
+		ctx.AbortWithError(http.StatusBadRequest, err)
 		return
 	}
-	defer conn.Close()
-
 	token := ctx.GetHeader("Authorization")
 	username, err := extractUsernameFromToken(token)
 	if err != nil {
@@ -52,23 +49,77 @@ func (c *ChatController) OpenChat(ctx *gin.Context) {
 		return
 	}
 
-	c.KConn.CreateTopics(kafka.TopicConfig{
-		Topic:             userToChat + ":" + username,
+	topic := username + "-" + body["user"]
+	kConn, err := kafka.DialLeader(context.Background(), "tcp", os.Getenv("KAFKA_URL"), topic, 0)
+	if err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	if err := kConn.CreateTopics(kafka.TopicConfig{
+		Topic:             topic,
 		NumPartitions:     1,
 		ReplicationFactor: 1,
-	})
-
-	batch := c.KConn.ReadBatch(10e3, 1e6)
-	b := make([]byte, 10e3)
-	for {
-		n, err := batch.Read(b)
-		if err != nil {
-			break
-		}
-		ctx.JSON(http.StatusOK, string(b[:n]))
+	}); err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
 
-	defer batch.Close()
+	if _, err := kConn.WriteMessages(kafka.Message{
+		Topic: topic,
+		Value: []byte(body["message"]),
+	}); err != nil {
+		ctx.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
+	ctx.JSON(http.StatusOK, gin.H{
+		"message": "Message sent successfully",
+	})
+}
+
+func (c *ChatController) OpenChat(ctx *gin.Context) {
+	userToChat := ctx.Query("user")
+	conn, err := upgrader.Upgrade(ctx.Writer, ctx.Request, nil)
+	if err != nil {
+		conn.WriteMessage(websocket.TextMessage, []byte("Error in upgrading connection: "+err.Error()))
+		return
+	}
+
+	token := ctx.Query("Authorization")
+	username, err := extractUsernameFromToken(token)
+	if err != nil {
+		conn.WriteMessage(websocket.TextMessage, []byte("Error in upgrading connection: "+err.Error()))
+		return
+	}
+
+	topic := username + "-" + userToChat
+	kConn, err := kafka.DialLeader(context.Background(), "tcp", os.Getenv("KAFKA_URL"), topic, 0)
+	if err != nil {
+		conn.WriteMessage(websocket.TextMessage, []byte("Error in upgrading connection: "+err.Error()))
+		return
+	}
+
+	kConn.SetWriteDeadline(time.Now().Add(10 * time.Second))
+
+	for {
+		msg, readErr := kConn.ReadMessage(1e6)
+		if errors.Is(readErr, io.EOF) {
+			break
+		}
+
+		if readErr != nil {
+			conn.WriteMessage(websocket.TextMessage, []byte("Error in reading message: "+readErr.Error()))
+			break
+		}
+
+		if len(msg.Value) != 0 {
+			conn.WriteMessage(websocket.TextMessage, []byte(userToChat+": "+string(msg.Value)))
+		}
+	}
+
+	defer func() {
+		conn.Close()
+		kConn.Close()
+	}()
 }
 
 func extractUsernameFromToken(tokenString string) (string, error) {

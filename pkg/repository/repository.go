@@ -3,6 +3,7 @@ package repository
 import (
 	"database/sql"
 	"errors"
+	"github.com/PandaX185/tatsumaki-chat/pkg/hashing"
 	"os"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 )
 
 type Repository interface {
+	GetAllUsers() ([]string, error)
 	GetUser(username string) (*models.User, error)
 	CreateUser(user *models.User) error
 	Login(username string, password string) (string, error)
@@ -26,6 +28,30 @@ func NewRepository(db *sql.DB) Repository {
 	}
 }
 
+func (r *repository) GetAllUsers() ([]string, error) {
+	users := []string{}
+	rows, err := r.db.Query("SELECT username FROM users")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var username string
+		if err := rows.Scan(&username); err != nil {
+			return nil, err
+		}
+
+		users = append(users, username)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return users, nil
+}
+
 func (r *repository) GetUser(username string) (*models.User, error) {
 	user := &models.User{}
 	err := r.db.QueryRow("SELECT * FROM users WHERE username = $1", username).Scan(&user.ID, &user.Username, &user.Password)
@@ -38,6 +64,19 @@ func (r *repository) GetUser(username string) (*models.User, error) {
 }
 
 func (r *repository) CreateUser(user *models.User) error {
+	if user.Username == "" || user.Password == "" {
+		return errors.New("username or password cannot be empty")
+	}
+
+	if _, err := r.GetUser(user.Username); err == nil {
+		return errors.New("username already exists")
+	}
+
+	user.Password = hashing.HashPassword(user.Password)
+	if user.Password == "" {
+		return errors.New("error hashing password")
+	}
+
 	_, err := r.db.Exec("INSERT INTO users (username, password) VALUES ($1, $2)", &user.Username, &user.Password)
 
 	if err != nil {

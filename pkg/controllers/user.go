@@ -14,6 +14,7 @@ func (uc *UserController) SetupController(router *gin.Engine) {
 	router.POST("/register", uc.CreateUser)
 	router.POST("/login", uc.Login)
 	router.GET("/users/:username", uc.GetUser)
+	router.GET("/users/", uc.GetAllUsers)
 }
 
 func NewUserController(r repository.Repository) *UserController {
@@ -32,7 +33,17 @@ func (uc *UserController) CreateUser(c *gin.Context) {
 		c.JSON(400, gin.H{"error": err.Error()})
 		return
 	}
-	c.JSON(200, gin.H{"data": user})
+
+	c.JSON(200, gin.H{"message": "user created successfully"})
+}
+
+func (uc *UserController) GetAllUsers(c *gin.Context) {
+	users, err := uc.Repository.GetAllUsers()
+	if err != nil {
+		c.JSON(400, gin.H{"error": err.Error()})
+		return
+	}
+	c.JSON(200, users)
 }
 
 func (uc *UserController) GetUser(c *gin.Context) {

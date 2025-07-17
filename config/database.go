@@ -1,19 +1,19 @@
 package config
 
 import (
-	"database/sql"
 	"fmt"
 	"os"
 
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
-var DbInstance *sql.DB
+var DbInstance *sqlx.DB
 
-func InitDb() (*sql.DB, error) {
+func InitDb() (*sqlx.DB, error) {
 	if DbInstance == nil {
 		connStr := fmt.Sprintf("user=%s password=%s dbname=%s host=%s sslmode=require", os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_NAME"), os.Getenv("DB_HOST"))
-		db, err := sql.Open("postgres", connStr)
+		db, err := sqlx.Connect("postgres", connStr)
 		if err != nil {
 			return nil, err
 		}

@@ -1,4 +1,4 @@
-package user
+package users
 
 import (
 	"encoding/json"
@@ -6,18 +6,15 @@ import (
 	"strings"
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
-	"go.uber.org/zap"
 )
 
 type UserHandler struct {
 	service *UserService
-	logger  *zap.SugaredLogger
 }
 
-func NewHandler(s *UserService, logger *zap.SugaredLogger) *UserHandler {
+func NewHandler(s *UserService) *UserHandler {
 	return &UserHandler{
 		service: s,
-		logger:  logger,
 	}
 }
 
@@ -28,7 +25,6 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 			Code:    errors.BAD_REQUEST,
 			Message: "Error parsing request body",
 		}
-		h.logger.Errorln(jsonErr)
 		jsonErr.ReturnError(w)
 		return
 	}

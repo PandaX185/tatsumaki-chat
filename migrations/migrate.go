@@ -5,19 +5,31 @@ import (
 )
 
 func Up(db *sqlx.DB) error {
-	var err error
-	if err = createUsersTable(db); err != nil {
-		return err
+	errs := []error{
+		createUsersTable(db),
+		createChatsTable(db),
+		createUsersChatsTable(db),
 	}
 
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
 func Down(db *sqlx.DB) error {
-	var err error
-	if err = rollbackCreateUsersTable(db); err != nil {
-		return err
+	errs := []error{
+		// rollbackCreateUsersTable(db),
+		// rollbackCreateUsersChatsTable(db),
+		// rollbackCreateChatsTable(db),
 	}
 
+	for _, err := range errs {
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }

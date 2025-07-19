@@ -29,11 +29,11 @@ func main() {
 	}
 	logger.Infoln("Database is runnning...")
 
-	if err = migrations.Down(db); err != nil {
-		logger.Errorln("error rolling back old database migrations: ", err)
-	} else {
-		logger.Infoln("Migrations rolled back successfully")
-	}
+	// if err = migrations.Down(db); err != nil {
+	// 	logger.Errorln("error rolling back old database migrations: ", err)
+	// } else {
+	// 	logger.Infoln("Migrations rolled back successfully")
+	// }
 
 	if err = migrations.Up(db); err != nil {
 		logger.Errorln("error applying database migrations: ", err)
@@ -41,16 +41,16 @@ func main() {
 		logger.Infoln("Migrations applied successfully")
 	}
 
-	srv := http.Server{
-		Addr: os.Getenv("PORT"),
-	}
+	mux := http.NewServeMux()
+	path := os.Getenv("PORT")
 
 	userHandler := user.NewHandler(user.NewService(user.NewRepository()), logger)
 
-	http.HandleFunc("POST /api/users", userHandler.RegisterUser)
+	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)
+	mux.HandleFunc("GET /api/users/{username}", userHandler.GetUserByUsername)
 
-	logger.Infoln("Starting server on port 8080...")
-	if err := srv.ListenAndServe(); err != nil {
-		logger.Error("Error starting the server: ", err)
+	logger.Infof("Starting server on port %v...\n", path)
+	if err := http.ListenAndServe(path, mux); err != nil {
+		logger.Fatalln("Error starting the server: ", err)
 	}
 }

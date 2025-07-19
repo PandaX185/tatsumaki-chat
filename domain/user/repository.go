@@ -1,8 +1,6 @@
 package user
 
 import (
-	"fmt"
-
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/jmoiron/sqlx"
 )
@@ -32,26 +30,23 @@ func (r *UserRepositoryImpl) Save(user User) (*User, error) {
 
 	var res User
 	if err = tx.Get(&res, `select * from users where user_name = $1`, user.UserName); err != nil {
-		fmt.Printf("err: %v\n", err)
-	}
-	return &res, nil
-}
-
-func (r *UserRepositoryImpl) GetByUserName(username string) (*User, error) {
-	tx, err := r.Db.Begin()
-	if err != nil {
-		return nil, err
-	}
-
-	var res *User
-	row := tx.QueryRow(`select * from users where user_name = $1`, username)
-	if err := row.Scan(&res); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
-	if err = tx.Commit(); err != nil {
+	tx.Commit()
+	return &res, nil
+}
+
+func (r *UserRepositoryImpl) GetByUserName(username string) (*User, error) {
+	tx := r.Db.MustBegin()
+
+	var res User
+	if err := tx.Get(&res, `select * from users where user_name = $1`, username); err != nil {
+		tx.Rollback()
 		return nil, err
 	}
-	return res, nil
+
+	tx.Commit()
+	return &res, nil
 }

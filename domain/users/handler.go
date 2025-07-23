@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
+	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
 )
 
 type UserHandler struct {
@@ -22,7 +23,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	var body User
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr := errors.JsonError{
-			Code:    errors.BAD_REQUEST,
+			Code:    codes.BAD_REQUEST,
 			Message: "Error parsing request body",
 		}
 		jsonErr.ReturnError(w)
@@ -32,11 +33,11 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	res, err := h.service.Save(body)
 	if err != nil {
 		jsonErr := errors.JsonError{
-			Code:    errors.INTERNAL,
+			Code:    codes.INTERNAL,
 			Message: "Error saving the user: " + err.Error(),
 		}
 		if strings.Contains(strings.ToLower(err.Error()), "duplicate") {
-			jsonErr.Code = errors.CONFLICT
+			jsonErr.Code = codes.CONFLICT
 			jsonErr.Message = "User already exists"
 		}
 		jsonErr.ReturnError(w)
@@ -53,7 +54,7 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	res, err := h.service.GetByUserName(username)
 	if err != nil {
 		jsonErr := errors.JsonError{
-			Code:    errors.BAD_REQUEST,
+			Code:    codes.BAD_REQUEST,
 			Message: "Error getting the user: " + err.Error(),
 		}
 		jsonErr.ReturnError(w)

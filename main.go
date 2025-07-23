@@ -7,6 +7,7 @@ import (
 
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/chats"
+	"github.com/PandaX185/tatsumaki-chat/domain/messages"
 	"github.com/PandaX185/tatsumaki-chat/domain/users"
 	"github.com/PandaX185/tatsumaki-chat/migrations"
 	"github.com/joho/godotenv"
@@ -43,6 +44,7 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
+
 	path := os.Getenv("PORT")
 
 	// User routes
@@ -53,6 +55,12 @@ func main() {
 	// Chat routes
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
 	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat)
+
+	// Message routes
+	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository()))
+	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)
+	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)
+	mux.HandleFunc("GET /api/ws/messages/{chat_id}", messageHandler.GetMessagesRealtime)
 
 	logger.Infof("Starting server on port %v...\n", path)
 	if err := http.ListenAndServe(path, mux); err != nil {

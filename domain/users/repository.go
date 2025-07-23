@@ -29,7 +29,7 @@ func (r *UserRepositoryImpl) Save(user User) (*User, error) {
 	}
 
 	var res User
-	if err = tx.Get(&res, `select * from users where user_name = :user_name limit 1`, user); err != nil {
+	if err = tx.Get(&res, `select * from users where user_name = $1 limit 1`, user.UserName); err != nil {
 		tx.Rollback()
 		return nil, err
 	}

@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
+	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
 )
 
 type ChatHandler struct {
@@ -21,7 +22,7 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 	var body Chat
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr := errors.JsonError{
-			Code:    errors.BAD_REQUEST,
+			Code:    codes.BAD_REQUEST,
 			Message: "Error parsing request body",
 		}
 		jsonErr.ReturnError(w)
@@ -31,7 +32,7 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 	res, err := h.service.Create(body)
 	if err != nil {
 		jsonErr := errors.JsonError{
-			Code:    errors.INTERNAL,
+			Code:    codes.INTERNAL,
 			Message: "Error creating the chat: " + err.Error(),
 		}
 		jsonErr.ReturnError(w)

@@ -4,7 +4,7 @@ import "github.com/jmoiron/sqlx"
 
 func createMessagesTrigger(tx *sqlx.DB) error {
 	function := `
-	create function notify_new_message() returns trigger as $$
+	create or replace function notify_new_message() returns trigger as $$
 	begin
 		perform pg_notify('message_sent', row_to_json(new)::text);
 		return new;

@@ -11,6 +11,7 @@ import (
 	"github.com/PandaX185/tatsumaki-chat/domain/users"
 	"github.com/PandaX185/tatsumaki-chat/migrations"
 	"github.com/joho/godotenv"
+	"github.com/rs/cors"
 )
 
 func init() {
@@ -44,13 +45,13 @@ func main() {
 	}
 
 	mux := http.NewServeMux()
-
 	path := os.Getenv("PORT")
 
 	// User routes
 	userHandler := users.NewHandler(users.NewService(users.NewRepository()))
 	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)
 	mux.HandleFunc("GET /api/users/{username}", userHandler.GetUserByUsername)
+	mux.HandleFunc("POST /api/users/login", userHandler.Login)
 
 	// Chat routes
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
@@ -62,8 +63,9 @@ func main() {
 	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)
 	mux.HandleFunc("GET /api/ws/messages/{chat_id}", messageHandler.GetMessagesRealtime)
 
+	handler := cors.AllowAll().Handler(mux)
 	logger.Infof("Starting server on port %v...\n", path)
-	if err := http.ListenAndServe(path, mux); err != nil {
+	if err := http.ListenAndServe(path, handler); err != nil {
 		logger.Fatalln("Error starting the server: ", err)
 	}
 }

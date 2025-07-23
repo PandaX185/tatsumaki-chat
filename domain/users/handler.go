@@ -64,3 +64,28 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
 }
+
+func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
+	var body User
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		jsonErr := errors.JsonError{
+			Code:    codes.BAD_REQUEST,
+			Message: "Error parsing request body",
+		}
+		jsonErr.ReturnError(w)
+		return
+	}
+
+	res, err := h.service.Login(body.UserName, body.Password)
+	if err != nil {
+		jsonErr := errors.JsonError{
+			Code:    codes.UNAUTHORIZED,
+			Message: "Invalid credentials: " + err.Error(),
+		}
+		jsonErr.ReturnError(w)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
+}

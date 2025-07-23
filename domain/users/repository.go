@@ -8,6 +8,7 @@ import (
 type UserRepository interface {
 	Save(User) (*User, error)
 	GetByUserName(string) (*User, error)
+	Login(string, string) (*User, error)
 }
 
 type UserRepositoryImpl struct {
@@ -43,6 +44,19 @@ func (r *UserRepositoryImpl) GetByUserName(username string) (*User, error) {
 
 	var res User
 	if err := tx.Get(&res, `select * from users where user_name = $1 limit 1`, username); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	tx.Commit()
+	return &res, nil
+}
+
+func (r *UserRepositoryImpl) Login(username, password string) (*User, error) {
+	tx := r.db.MustBegin()
+
+	var res User
+	if err := tx.Get(&res, `select * from users where user_name = $1 and password = $2 limit 1`, username, password); err != nil {
 		tx.Rollback()
 		return nil, err
 	}

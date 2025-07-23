@@ -27,3 +27,12 @@ func (s *UserService) GetByUserName(username string) (*User, error) {
 
 	return res, nil
 }
+
+func (s *UserService) Login(username, password string) (*User, error) {
+	res, err := s.repository.Login(username, password)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

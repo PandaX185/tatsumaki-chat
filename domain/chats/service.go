@@ -18,3 +18,12 @@ func (s *ChatService) Create(chat Chat) (*Chat, error) {
 
 	return res, nil
 }
+
+func (s *ChatService) GetChatsRealtime(username string) ([]Chat, error) {
+	res, err := s.repository.GetChatsRealtime(username)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}

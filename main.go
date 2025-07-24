@@ -9,6 +9,7 @@ import (
 	"github.com/PandaX185/tatsumaki-chat/domain/chats"
 	"github.com/PandaX185/tatsumaki-chat/domain/messages"
 	"github.com/PandaX185/tatsumaki-chat/domain/users"
+	"github.com/PandaX185/tatsumaki-chat/middlewares"
 	"github.com/PandaX185/tatsumaki-chat/migrations"
 	"github.com/joho/godotenv"
 	"github.com/rs/cors"
@@ -56,6 +57,7 @@ func main() {
 	// Chat routes
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
 	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat)
+	mux.HandleFunc("GET /api/ws/chats/{username}", chatHandler.GetChatsRealtime)
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository()))
@@ -65,7 +67,7 @@ func main() {
 
 	handler := cors.AllowAll().Handler(mux)
 	logger.Infof("Starting server on port %v...\n", path)
-	if err := http.ListenAndServe(path, handler); err != nil {
+	if err := http.ListenAndServe(path, middlewares.VerifyJwt(handler)); err != nil {
 		logger.Fatalln("Error starting the server: ", err)
 	}
 }

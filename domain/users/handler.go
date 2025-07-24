@@ -3,10 +3,12 @@ package users
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
+	"github.com/PandaX185/tatsumaki-chat/utils"
 )
 
 type UserHandler struct {
@@ -44,8 +46,24 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	accessToken, err := utils.GenerateJwt(map[string]string{
+		"userId":   strconv.FormatInt(int64(res.Id), 10),
+		"username": res.UserName,
+		"fullname": res.FullName,
+	})
+	if err != nil {
+		jsonErr := errors.JsonError{
+			Code:    codes.INTERNAL,
+			Message: "Error generating JWT token: " + err.Error(),
+		}
+		jsonErr.ReturnError(w)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(map[string]string{
+		"access_token": accessToken,
+	})
 }
 
 func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +104,22 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	accessToken, err := utils.GenerateJwt(map[string]string{
+		"userId":   strconv.FormatInt(int64(res.Id), 10),
+		"username": res.UserName,
+		"fullname": res.FullName,
+	})
+	if err != nil {
+		jsonErr := errors.JsonError{
+			Code:    codes.INTERNAL,
+			Message: "Error generating JWT token: " + err.Error(),
+		}
+		jsonErr.ReturnError(w)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(map[string]string{
+		"access_token": accessToken,
+	})
 }

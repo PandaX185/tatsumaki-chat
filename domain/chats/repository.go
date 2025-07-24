@@ -7,6 +7,7 @@ import (
 
 type ChatRepository interface {
 	Create(Chat) (*Chat, error)
+	GetChatsRealtime(string) ([]Chat, error)
 }
 
 type ChatRepositoryImpl struct {
@@ -35,4 +36,17 @@ func (c *ChatRepositoryImpl) Create(chat Chat) (*Chat, error) {
 
 	tx.Commit()
 	return &res, nil
+}
+
+func (c *ChatRepositoryImpl) GetChatsRealtime(username string) ([]Chat, error) {
+	tx := c.db.MustBegin()
+
+	var res []Chat
+	if err := tx.Select(&res, `select chats.* from chats join users on users.id = chat_owner where user_name = $1 order by users.created_at desc`, username); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	tx.Commit()
+	return res, nil
 }

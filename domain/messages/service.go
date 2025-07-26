@@ -19,8 +19,8 @@ func (s *MessageService) Send(m Message) (string, error) {
 	return res, nil
 }
 
-func (s *MessageService) GetAll(chat_id int) ([]Message, error) {
-	res, err := s.repository.GetAll(chat_id)
+func (s *MessageService) GetAll(chat_id, user_id int) ([]Message, error) {
+	res, err := s.repository.GetAll(chat_id, user_id)
 	if err != nil {
 		return nil, err
 	}

@@ -1,6 +1,7 @@
 package middlewares
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -18,7 +19,7 @@ var whitelist = []string{
 func VerifyJwt(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		for _, path := range whitelist {
-			if strings.HasPrefix(strings.Join([]string{r.Method, r.URL.Path}, ""),path) {
+			if strings.HasPrefix(strings.Join([]string{r.Method, r.URL.Path}, ""), path) {
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -42,6 +43,12 @@ func VerifyJwt(next http.Handler) http.Handler {
 			return []byte(os.Getenv("AUTH_KEY")), nil
 		})
 
+		claims := extractClaims(token)
+		ctx := context.WithValue(context.Background(), "userId", claims["userId"])
+		ctx = context.WithValue(ctx, "username", claims["username"])
+		ctx = context.WithValue(ctx, "fullname", claims["fullname"])
+		r = r.WithContext(ctx)
+
 		if err != nil || !token.Valid {
 			w.WriteHeader(codes.UNAUTHORIZED)
 			json.NewEncoder(w).Encode(map[string]any{
@@ -53,4 +60,11 @@ func VerifyJwt(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
+}
+
+func extractClaims(token *jwt.Token) jwt.MapClaims {
+	if claims, ok := token.Claims.(jwt.MapClaims); ok {
+		return claims
+	}
+	return nil
 }

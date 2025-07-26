@@ -42,6 +42,10 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	userId := r.Context().Value("userId")
+	userIdInt, _ := strconv.ParseInt(userId.(string), 10, 32)
+	body.SenderId = int(userIdInt)
+
 	res, err := h.service.Send(body)
 	if err != nil {
 		jsonErr := errors.JsonError{
@@ -67,8 +71,10 @@ func (h *MessageHandler) GetAllMessages(w http.ResponseWriter, r *http.Request) 
 		jsonErr.ReturnError(w)
 		return
 	}
+	userId := r.Context().Value("userId")
+	userIdInt, _ := strconv.ParseInt(userId.(string), 10, 32)
 
-	res, err := h.service.GetAll(int(chat_id))
+	res, err := h.service.GetAll(int(chat_id), int(userIdInt))
 	if err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.INTERNAL,

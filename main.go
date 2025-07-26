@@ -50,19 +50,19 @@ func main() {
 
 	// User routes
 	userHandler := users.NewHandler(users.NewService(users.NewRepository()))
-	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)
-	mux.HandleFunc("GET /api/users/{username}", userHandler.GetUserByUsername)
-	mux.HandleFunc("POST /api/users/login", userHandler.Login)
+	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)                // Correct
+	mux.HandleFunc("GET /api/users/{username}", userHandler.GetUserByUsername) // Correct
+	mux.HandleFunc("POST /api/users/login", userHandler.Login)                 // Correct
 
 	// Chat routes
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
-	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat)
-	mux.HandleFunc("GET /api/ws/chats/{username}", chatHandler.GetChatsRealtime)
+	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat) // Correct
+	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats) // Correct
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository()))
-	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)
-	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)
+	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)             // Correct
+	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages) // Correct
 	mux.HandleFunc("GET /api/ws/messages/{chat_id}", messageHandler.GetMessagesRealtime)
 
 	handler := cors.AllowAll().Handler(mux)

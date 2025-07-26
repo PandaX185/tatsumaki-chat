@@ -8,7 +8,7 @@ import (
 
 type MessageRepository interface {
 	Send(Message) (string, error)
-	GetAll(int) ([]Message, error)
+	GetAll(int, int) ([]Message, error)
 }
 
 type MessageRepositoryImpl struct {
@@ -37,11 +37,11 @@ func (r *MessageRepositoryImpl) Send(m Message) (string, error) {
 	return "Message sent", nil
 }
 
-func (r *MessageRepositoryImpl) GetAll(chat_id int) ([]Message, error) {
+func (r *MessageRepositoryImpl) GetAll(chat_id, user_id int) ([]Message, error) {
 	tx := r.db.MustBegin()
 	var res []Message
 
-	if err := tx.Select(&res, `select * from messages where cid = $1`, chat_id); err != nil {
+	if err := tx.Select(&res, `select messages.* from messages join users_chats on messages.cid = users_chats.cid where users_chats.cid = $1 and uid = $2`, chat_id, user_id); err != nil {
 		return nil, err
 	}
 

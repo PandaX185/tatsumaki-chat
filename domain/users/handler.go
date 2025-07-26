@@ -80,7 +80,7 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(res.ToApiResponse())
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {

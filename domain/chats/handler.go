@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
@@ -39,6 +40,10 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	chatOwner := r.Context().Value("userId")
+	owner, _ := strconv.ParseInt(chatOwner.(string), 10, 32)
+	body.ChatOwner = int(owner)
+
 	res, err := h.service.Create(body)
 	if err != nil {
 		jsonErr := errors.JsonError{
@@ -48,32 +53,25 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(jsonErr)
 		return
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
 }
 
-func (h *ChatHandler) GetChatsRealtime(w http.ResponseWriter, r *http.Request) {
-	conn, err := upgrader.Upgrade(w, r, nil)
+func (h *ChatHandler) GetAllChats(w http.ResponseWriter, r *http.Request) {
+
+	chatOwner := r.Context().Value("userId")
+	owner, _ := strconv.ParseInt(chatOwner.(string), 10, 32)
+
+	res, err := h.service.GetAllChats(int(owner))
 	if err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.INTERNAL,
-			Message: "Error upgrading to websocket connection: " + err.Error(),
+			Message: "Error getting chats: " + err.Error(),
 		}
 		fmt.Println(jsonErr)
 		return
 	}
 
-	username := r.PathValue("username")
-	res, err := h.service.GetChatsRealtime(username)
-	if err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.INTERNAL,
-			Message: "Error getting the chats: " + err.Error(),
-		}
-		fmt.Println(jsonErr)
-		return
-	}
-
-	conn.WriteJSON(res)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res)
 }

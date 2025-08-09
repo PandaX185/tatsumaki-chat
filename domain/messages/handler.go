@@ -2,15 +2,12 @@ package messages
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
-	"time"
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
 	"github.com/gorilla/websocket"
-	"github.com/lib/pq"
 )
 
 type MessageHandler struct {
@@ -90,28 +87,13 @@ func (h *MessageHandler) GetAllMessages(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Request) {
-	lis := pq.NewListener("messages_listener", 5*time.Second, 5*time.Second, nil)
-	if err := lis.Listen("on_message_sent"); err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.INTERNAL,
-			Message: "Error listening to messages channel: " + err.Error(),
-		}
-		jsonErr.ReturnError(w)
-		return
-	}
-
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.INTERNAL,
-			Message: "Error upgrading to websocket connection: " + err.Error(),
-		}
-		jsonErr.ReturnError(w)
-		return
+		conn.WriteJSON(map[string]string{
+			"error": err.Error(),
+		})
 	}
 
-	for msg := range lis.Notify {
-		fmt.Printf("msg.Extra: %v\n", msg.Extra)
-		conn.WriteMessage(1, []byte(msg.Extra))
-	}
+	var result []Message
+	conn.WriteJSON(result)
 }

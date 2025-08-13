@@ -3,6 +3,7 @@ package middlewares
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -14,6 +15,22 @@ import (
 var whitelist = []string{
 	"POST/api/users",
 	"POST/api/users/login",
+	"GET/api/ws/messages",
+}
+
+func VerifyJwtFromQuery(tokenString string) jwt.MapClaims {
+	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, jwt.ErrECDSAVerification
+		}
+		return []byte(os.Getenv("AUTH_KEY")), nil
+	})
+
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return extractClaims(token)
 }
 
 func VerifyJwt(next http.Handler) http.Handler {

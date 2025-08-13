@@ -2,11 +2,14 @@ package messages
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
+	"github.com/PandaX185/tatsumaki-chat/middlewares"
 	"github.com/gorilla/websocket"
 )
 
@@ -53,6 +56,9 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	rds := config.GetRedis()
+	rds.Publish(r.Context(), strconv.Itoa(body.ChatId), body)
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(codes.CREATED)
 	json.NewEncoder(w).Encode(res)
@@ -87,6 +93,16 @@ func (h *MessageHandler) GetAllMessages(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Request) {
+	userData := middlewares.VerifyJwtFromQuery(r.URL.Query().Get("token"))
+
+	fmt.Printf("userData: %v\n", userData)
+	userId := userData["userId"]
+
+	rds := config.GetRedis()
+
+	pubsub := rds.Subscribe(r.Context(), userId.(string))
+	defer pubsub.Close()
+
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		conn.WriteJSON(map[string]string{
@@ -94,6 +110,14 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 		})
 	}
 
-	var result []Message
-	conn.WriteJSON(result)
+	for {
+		msg, err := pubsub.ReceiveMessage(r.Context())
+		if err != nil {
+			fmt.Println(err)
+		}
+
+		if err := conn.WriteJSON(msg.Payload); err != nil {
+			fmt.Println(err)
+		}
+	}
 }

@@ -41,6 +41,7 @@ func (s *UserService) GetByUserName(username string) (*User, error) {
 }
 
 func (s *UserService) Login(username, password string) (*User, error) {
+	password = hashPassword(password)
 	res, err := s.repository.Login(username, password)
 	if err != nil {
 		return nil, err

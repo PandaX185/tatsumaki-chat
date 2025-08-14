@@ -9,7 +9,6 @@ import (
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
-	"github.com/PandaX185/tatsumaki-chat/middlewares"
 	"github.com/gorilla/websocket"
 )
 
@@ -57,7 +56,9 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	rds := config.GetRedis()
-	rds.Publish(r.Context(), strconv.Itoa(body.ChatId), body)
+	messageJson, _ := json.Marshal(res)
+	fmt.Printf("Publishing message to channel %d: %s\n", body.ChatId, string(messageJson))
+	rds.Publish(r.Context(), strconv.Itoa(body.ChatId), string(messageJson))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(codes.CREATED)
@@ -93,31 +94,44 @@ func (h *MessageHandler) GetAllMessages(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Request) {
-	userData := middlewares.VerifyJwtFromQuery(r.URL.Query().Get("token"))
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
 
-	fmt.Printf("userData: %v\n", userData)
-	userId := userData["userId"]
-
+	chatId := r.PathValue("chat_id")
 	rds := config.GetRedis()
-
-	pubsub := rds.Subscribe(r.Context(), userId.(string))
+	pubsub := rds.Subscribe(r.Context(), chatId)
 	defer pubsub.Close()
 
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		conn.WriteJSON(map[string]string{
-			"error": err.Error(),
-		})
+	ch := pubsub.Channel()
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
 	}
 
-	for {
-		msg, err := pubsub.ReceiveMessage(r.Context())
-		if err != nil {
-			fmt.Println(err)
-		}
+	fmt.Fprintf(w, "event: connected\ndata: Connected to chat %s\n\n", chatId)
+	flusher.Flush()
 
-		if err := conn.WriteJSON(msg.Payload); err != nil {
-			fmt.Println(err)
+	fmt.Printf("Streaming messages for chat %s...\n", chatId)
+
+	notify := r.Context().Done()
+	for {
+		select {
+		case <-notify:
+			fmt.Printf("Client disconnected from chat %s\n", chatId)
+			return
+		case msg, ok := <-ch:
+			if !ok {
+				fmt.Printf("PubSub channel closed for chat %s\n", chatId)
+				return
+			}
+			fmt.Printf("Received message for chat %s: %v\n", chatId, msg.Payload)
+
+			fmt.Fprintf(w, "event:msg\ndata: %s\n\n", msg.Payload)
+			flusher.Flush()
 		}
 	}
 }

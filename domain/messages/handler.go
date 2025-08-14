@@ -9,19 +9,10 @@ import (
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
-	"github.com/gorilla/websocket"
 )
 
 type MessageHandler struct {
 	service *MessageService
-}
-
-var upgrader websocket.Upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
 }
 
 func NewHandler(s *MessageService) *MessageHandler {
@@ -57,8 +48,10 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	rds := config.GetRedis()
 	messageJson, _ := json.Marshal(res)
-	fmt.Printf("Publishing message to channel %d: %s\n", body.ChatId, string(messageJson))
-	rds.Publish(r.Context(), fmt.Sprintf("messages:%d", body.ChatId), string(messageJson))
+
+	for _, userId := range h.service.GetChatMembers(body.ChatId) {
+		rds.Publish(r.Context(), fmt.Sprintf("messages:%d", userId), string(messageJson))
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(codes.CREATED)
@@ -98,9 +91,14 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	chatId := r.PathValue("chat_id")
+	userId, err := strconv.Atoi(r.Context().Value("userId").(string))
+	if err != nil {
+		http.Error(w, "Invalid user data format", http.StatusInternalServerError)
+		return
+	}
+
 	rds := config.GetRedis()
-	pubsub := rds.Subscribe(r.Context(), fmt.Sprintf("messages:%s", chatId))
+	pubsub := rds.Subscribe(r.Context(), fmt.Sprintf("messages:%v", userId))
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()
@@ -110,25 +108,21 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	fmt.Fprintf(w, "event: connected\ndata: Connected to chat %s\n\n", chatId)
+	fmt.Fprintf(w, "event: connected\ndata: Connected to user %v\n\n", userId)
 	flusher.Flush()
-
-	fmt.Printf("Streaming messages for chat %s...\n", chatId)
 
 	notify := r.Context().Done()
 	for {
 		select {
 		case <-notify:
-			fmt.Printf("Client disconnected from chat %s\n", chatId)
 			return
 		case msg, ok := <-ch:
 			if !ok {
-				fmt.Printf("PubSub channel closed for chat %s\n", chatId)
+				fmt.Printf("PubSub channel closed for user %v\n", userId)
 				return
 			}
-			fmt.Printf("Received message for chat %s: %v\n", chatId, msg.Payload)
 
-			fmt.Fprintf(w, "event:msg\ndata: %s\n\n", msg.Payload)
+			fmt.Fprintf(w, "event: msg\ndata: %v\n\n", msg.Payload)
 			flusher.Flush()
 		}
 	}

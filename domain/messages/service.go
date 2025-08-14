@@ -27,3 +27,7 @@ func (s *MessageService) GetAll(chat_id, user_id int) ([]Message, error) {
 
 	return res, nil
 }
+
+func (s *MessageService) GetChatMembers(chat_id int) []int {
+	return s.repository.GetChatMembers(chat_id)
+}

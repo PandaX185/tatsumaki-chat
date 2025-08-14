@@ -2,6 +2,7 @@ package users
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -80,7 +81,7 @@ func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(res.ToApiResponse())
+	json.NewEncoder(w).Encode(res.ToShortUserResponse())
 }
 
 func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -122,4 +123,22 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{
 		"access_token": accessToken,
 	})
+}
+
+func (h *UserHandler) GetCurrentUserData(w http.ResponseWriter, r *http.Request) {
+	username := r.Context().Value("username").(string)
+	fmt.Printf("username: %v\n", username)
+	res, err := h.service.GetByUserName(username)
+	if err != nil {
+		jsonErr := errors.JsonError{
+			Code:    codes.BAD_REQUEST,
+			Message: "Error getting the user: " + err.Error(),
+		}
+		jsonErr.ReturnError(w)
+		return
+	}
+
+	fmt.Printf("res: %v\n", res.ToDetailedUserResponse())
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(res.ToDetailedUserResponse())
 }

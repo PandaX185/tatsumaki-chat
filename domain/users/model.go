@@ -16,10 +16,20 @@ type User struct {
 	DeletedAt sql.NullTime `json:"-" db:"deleted_at"`
 }
 
-func (u User) ToApiResponse() map[string]string {
+func (u User) ToShortUserResponse() map[string]string {
 	return map[string]string{
 		"id":       strconv.FormatInt(int64(u.Id), 10),
 		"username": u.UserName,
 		"fullname": u.FullName,
+	}
+}
+
+func (u User) ToDetailedUserResponse() map[string]interface{} {
+	return map[string]interface{}{
+		"id":         strconv.FormatInt(int64(u.Id), 10),
+		"full_name":  u.FullName,
+		"user_name":  u.UserName,
+		"created_at": u.CreatedAt.Format(time.RFC3339),
+		"updated_at": u.UpdatedAt.Format(time.RFC3339),
 	}
 }

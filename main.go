@@ -51,6 +51,7 @@ func main() {
 	// User routes
 	userHandler := users.NewHandler(users.NewService(users.NewRepository()))
 	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)                // Correct
+	mux.HandleFunc("GET /api/users/current", userHandler.GetCurrentUserData)   // Correct
 	mux.HandleFunc("GET /api/users/{username}", userHandler.GetUserByUsername) // Correct
 	mux.HandleFunc("POST /api/users/login", userHandler.Login)                 // Correct
 
@@ -58,13 +59,13 @@ func main() {
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
 	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat) // Correct
 	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats) // Correct
-	mux.Handle("GET /api/realtime/chats", middlewares.VerifyJwtFromQuery(http.HandlerFunc(chatHandler.GetChatsRealtime)))
+	// mux.Handle("GET /api/realtime/chats", middlewares.VerifyJwtFromQuery(http.HandlerFunc(chatHandler.GetChatsRealtime)))
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository()))
-	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)                                                                         // Correct
-	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)                                                             // Correct
-	mux.Handle("GET /api/realtime/messages/{chat_id}", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetMessagesRealtime))) // Correct
+	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)                                                               // Correct
+	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)                                                   // Correct
+	mux.Handle("GET /api/realtime/messages", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetMessagesRealtime))) // Correct
 
 	handler := cors.AllowAll().Handler(mux)
 	logger.Infof("Starting server on port %v...\n", path)

@@ -83,7 +83,7 @@ func (h *ChatHandler) GetChatsRealtime(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Connection", "keep-alive")
 
 	rds := config.GetRedis()
-	pubsub := rds.Subscribe(r.Context(), "chats")
+	pubsub := rds.Subscribe(r.Context(), fmt.Sprintf("chats:%s", r.Context().Value("userId")))
 	defer pubsub.Close()
 
 	rc := http.NewResponseController(w)
@@ -107,8 +107,6 @@ func (h *ChatHandler) GetChatsRealtime(w http.ResponseWriter, r *http.Request) {
 				fmt.Printf("PubSub channel closed\n")
 				return
 			}
-			fmt.Printf("Received new chat %v\n", msg.Payload)
-
 			fmt.Fprintf(w, "event:chat\ndata: %s\n\n", msg.Payload)
 			rc.Flush()
 		}

@@ -9,6 +9,7 @@ import (
 type MessageRepository interface {
 	Send(Message) (*Message, error)
 	GetAll(int, int) ([]Message, error)
+	GetChatMembers(int) []int
 }
 
 type MessageRepositoryImpl struct {
@@ -51,4 +52,15 @@ func (r *MessageRepositoryImpl) GetAll(chat_id, user_id int) ([]Message, error) 
 	}
 
 	return res, nil
+}
+
+func (r *MessageRepositoryImpl) GetChatMembers(chat_id int) []int {
+	tx := r.db.MustBegin()
+	var res []int
+
+	if err := tx.Select(&res, `select uid from users_chats where cid = $1`, chat_id); err != nil {
+		return []int{}
+	}
+
+	return res
 }

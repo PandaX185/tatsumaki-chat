@@ -57,6 +57,11 @@ func VerifyJwtFromQuery(next http.Handler) http.Handler {
 
 func VerifyJwt(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		for _, path := range whitelist {
 			if strings.HasPrefix(strings.Join([]string{r.Method, r.URL.Path}, ""), path) {
 				next.ServeHTTP(w, r)

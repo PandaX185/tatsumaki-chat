@@ -7,7 +7,7 @@ import (
 )
 
 type MessageRepository interface {
-	Send(Message) (string, error)
+	Send(Message) (*Message, error)
 	GetAll(int, int) ([]Message, error)
 }
 
@@ -21,20 +21,25 @@ func NewRepository() MessageRepository {
 	}
 }
 
-func (r *MessageRepositoryImpl) Send(m Message) (string, error) {
+func (r *MessageRepositoryImpl) Send(m Message) (*Message, error) {
 	tx := r.db.MustBegin()
 	if err := tx.Get(&chats.Chat{}, `select * from chats where id = $1 limit 1`, m.ChatId); err != nil {
 		tx.Rollback()
-		return "", err
+		return nil, err
 	}
 
 	if _, err := tx.NamedExec(`insert into messages (content, sender_id, cid) values (:content, :sender_id, :cid)`, m); err != nil {
 		tx.Rollback()
-		return "", err
+		return nil, err
+	}
+
+	if err := tx.Get(&m, `select * from messages where cid = $1 and sender_id = $2 order by id desc limit 1`, m.ChatId, m.SenderId); err != nil {
+		tx.Rollback()
+		return nil, err
 	}
 
 	tx.Commit()
-	return "Message sent", nil
+	return &m, nil
 }
 
 func (r *MessageRepositoryImpl) GetAll(chat_id, user_id int) ([]Message, error) {

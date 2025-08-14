@@ -58,7 +58,7 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	rds := config.GetRedis()
 	messageJson, _ := json.Marshal(res)
 	fmt.Printf("Publishing message to channel %d: %s\n", body.ChatId, string(messageJson))
-	rds.Publish(r.Context(), strconv.Itoa(body.ChatId), string(messageJson))
+	rds.Publish(r.Context(), fmt.Sprintf("messages:%d", body.ChatId), string(messageJson))
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(codes.CREATED)
@@ -94,15 +94,13 @@ func (h *MessageHandler) GetAllMessages(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Cache-Control")
 	w.Header().Set("Content-Type", "text/event-stream")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
 	chatId := r.PathValue("chat_id")
 	rds := config.GetRedis()
-	pubsub := rds.Subscribe(r.Context(), chatId)
+	pubsub := rds.Subscribe(r.Context(), fmt.Sprintf("messages:%s", chatId))
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()

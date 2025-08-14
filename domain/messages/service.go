@@ -10,10 +10,10 @@ func NewService(r MessageRepository) *MessageService {
 	}
 }
 
-func (s *MessageService) Send(m Message) (string, error) {
+func (s *MessageService) Send(m Message) (*Message, error) {
 	res, err := s.repository.Send(m)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	return res, nil

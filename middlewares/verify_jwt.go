@@ -3,7 +3,6 @@ package middlewares
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -15,22 +14,45 @@ import (
 var whitelist = []string{
 	"POST/api/users",
 	"POST/api/users/login",
-	"GET/api/ws/messages",
+	"GET/api/realtime",
 }
 
-func VerifyJwtFromQuery(tokenString string) jwt.MapClaims {
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.ErrECDSAVerification
+func VerifyJwtFromQuery(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		tokenString := r.URL.Query().Get("token")
+		if tokenString == "" {
+			w.WriteHeader(codes.UNAUTHORIZED)
+			json.NewEncoder(w).Encode(map[string]any{
+				"code":    codes.UNAUTHORIZED,
+				"message": "Token query parameter is missing",
+			})
+			return
 		}
-		return []byte(os.Getenv("AUTH_KEY")), nil
+
+		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
+			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+				return nil, jwt.ErrECDSAVerification
+			}
+			return []byte(os.Getenv("AUTH_KEY")), nil
+		})
+
+		if err != nil || !token.Valid {
+			w.WriteHeader(codes.UNAUTHORIZED)
+			json.NewEncoder(w).Encode(map[string]any{
+				"code":    codes.UNAUTHORIZED,
+				"message": "Invalid token",
+			})
+			return
+		}
+
+		claims := extractClaims(token)
+		ctx := context.WithValue(context.Background(), "userId", claims["userId"])
+		ctx = context.WithValue(ctx, "username", claims["username"])
+		ctx = context.WithValue(ctx, "fullname", claims["fullname"])
+		r = r.WithContext(ctx)
+
+		next.ServeHTTP(w, r)
 	})
-
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return extractClaims(token)
 }
 
 func VerifyJwt(next http.Handler) http.Handler {

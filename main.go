@@ -59,7 +59,6 @@ func main() {
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
 	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat) // Correct
 	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats) // Correct
-	// mux.Handle("GET /api/realtime/chats", middlewares.VerifyJwtFromQuery(http.HandlerFunc(chatHandler.GetChatsRealtime)))
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository()))

@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
 	"github.com/gorilla/websocket"
@@ -75,40 +74,4 @@ func (h *ChatHandler) GetAllChats(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
-}
-
-func (h *ChatHandler) GetChatsRealtime(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-
-	rds := config.GetRedis()
-	pubsub := rds.Subscribe(r.Context(), fmt.Sprintf("chats:%s", r.Context().Value("userId")))
-	defer pubsub.Close()
-
-	rc := http.NewResponseController(w)
-	ch := pubsub.Channel()
-
-	flusher, ok := w.(http.Flusher)
-	if !ok {
-		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
-		return
-	}
-
-	flusher.Flush()
-	notify := r.Context().Done()
-	for {
-		select {
-		case <-notify:
-			fmt.Printf("Client disconnected\n")
-			return
-		case msg, ok := <-ch:
-			if !ok {
-				fmt.Printf("PubSub channel closed\n")
-				return
-			}
-			fmt.Fprintf(w, "event:chat\ndata: %s\n\n", msg.Payload)
-			rc.Flush()
-		}
-	}
 }

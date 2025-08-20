@@ -31,8 +31,17 @@ func (s *UserService) Save(user User) (*User, error) {
 	return res, nil
 }
 
-func (s *UserService) GetByUserName(username string) (*User, error) {
-	res, err := s.repository.GetByUserName(username)
+func (s *UserService) GetByExactUserName(username string) (*User, error) {
+	res, err := s.repository.GetByExactUserName(username)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
+
+func (s *UserService) SearchByUserName(username string) (UserSlice, error) {
+	res, err := s.repository.SearchByUserName(username)
 	if err != nil {
 		return nil, err
 	}

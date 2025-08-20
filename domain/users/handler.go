@@ -67,10 +67,10 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *UserHandler) GetUserByUsername(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) SearchByUsername(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 
-	res, err := h.service.GetByUserName(username)
+	res, err := h.service.SearchByUserName(username)
 	if err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.BAD_REQUEST,
@@ -128,7 +128,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetCurrentUserData(w http.ResponseWriter, r *http.Request) {
 	username := r.Context().Value("username").(string)
 	fmt.Printf("username: %v\n", username)
-	res, err := h.service.GetByUserName(username)
+	res, err := h.service.GetByExactUserName(username)
 	if err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.BAD_REQUEST,

@@ -16,6 +16,16 @@ type User struct {
 	DeletedAt sql.NullTime `json:"-" db:"deleted_at"`
 }
 
+type UserSlice []User
+
+func (u UserSlice) ToShortUserResponse() []map[string]string {
+	var response []map[string]string
+	for _, user := range u {
+		response = append(response, user.ToShortUserResponse())
+	}
+	return response
+}
+
 func (u User) ToShortUserResponse() map[string]string {
 	return map[string]string{
 		"id":       strconv.FormatInt(int64(u.Id), 10),

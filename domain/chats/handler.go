@@ -30,7 +30,7 @@ func NewHandler(s *ChatService) *ChatHandler {
 }
 
 func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
-	var body Chat
+	var body ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.BAD_REQUEST,
@@ -53,6 +53,7 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 		fmt.Println(jsonErr)
 		return
 	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res)
 }

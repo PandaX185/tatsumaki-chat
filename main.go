@@ -50,10 +50,10 @@ func main() {
 
 	// User routes
 	userHandler := users.NewHandler(users.NewService(users.NewRepository()))
-	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)                // Correct
-	mux.HandleFunc("GET /api/users/current", userHandler.GetCurrentUserData)   // Correct
-	mux.HandleFunc("GET /api/users/{username}", userHandler.GetUserByUsername) // Correct
-	mux.HandleFunc("POST /api/users/login", userHandler.Login)                 // Correct
+	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)               // Correct
+	mux.HandleFunc("GET /api/users/current", userHandler.GetCurrentUserData)  // Correct
+	mux.HandleFunc("GET /api/users/{username}", userHandler.SearchByUsername) // Correct
+	mux.HandleFunc("POST /api/users/login", userHandler.Login)                // Correct
 
 	// Chat routes
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))

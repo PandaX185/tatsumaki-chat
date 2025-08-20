@@ -6,7 +6,7 @@ import (
 )
 
 type ChatRepository interface {
-	Create(Chat) (*Chat, error)
+	Create(ChatRequest) (*ChatResponse, error)
 	GetAllChats(int) ([]Chat, error)
 }
 
@@ -20,7 +20,7 @@ func NewRepository() ChatRepository {
 	}
 }
 
-func (c *ChatRepositoryImpl) Create(chat Chat) (*Chat, error) {
+func (c *ChatRepositoryImpl) Create(chat ChatRequest) (*ChatResponse, error) {
 	tx := c.db.MustBegin()
 
 	if _, err := tx.NamedExec(`insert into chats (chat_name, chat_owner) values (:chat_name, :chat_owner)`, chat); err != nil {
@@ -44,15 +44,40 @@ func (c *ChatRepositoryImpl) Create(chat Chat) (*Chat, error) {
 		return nil, err
 	}
 
+	query, args, err := sqlx.In(`SELECT id FROM users WHERE user_name IN (?)`, chat.ChatMembers)
+	if err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	query = tx.Rebind(query)
+	var userIds []int
+	if err := tx.Select(&userIds, query, args...); err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+
+	for _, userId := range userIds {
+		if _, err := tx.Exec(`INSERT INTO users_chats (uid, cid) VALUES ($1, $2)`, userId, res.Id); err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
 	tx.Commit()
-	return &res, nil
+	return &ChatResponse{
+		Id:          res.Id,
+		ChatName:    res.ChatName,
+		ChatOwner:   res.ChatOwner,
+		ChatMembers: chat.ChatMembers,
+		CreatedAt:   res.CreatedAt,
+	}, nil
 }
 
 func (c *ChatRepositoryImpl) GetAllChats(userId int) ([]Chat, error) {
 	tx := c.db.MustBegin()
 
 	var res []Chat
-	if err := tx.Select(&res, `select chats.* from chats join users_chats on cid = chats.id where uid = $1`, userId); err != nil {
+	if err := tx.Select(&res, `select chats.* from chats join users_chats on cid = chats.id where uid = $1 order by created_at desc`, userId); err != nil {
 		tx.Rollback()
 		return nil, err
 	}

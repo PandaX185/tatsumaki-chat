@@ -7,7 +7,8 @@ import (
 
 type UserRepository interface {
 	Save(User) (*User, error)
-	GetByUserName(string) (*User, error)
+	GetByExactUserName(string) (*User, error)
+	SearchByUserName(string) (UserSlice, error)
 	Login(string, string) (*User, error)
 }
 
@@ -39,28 +40,26 @@ func (r *UserRepositoryImpl) Save(user User) (*User, error) {
 	return &res, nil
 }
 
-func (r *UserRepositoryImpl) GetByUserName(username string) (*User, error) {
-	tx := r.db.MustBegin()
-
-	var res User
-	if err := tx.Get(&res, `select * from users where user_name = $1 limit 1`, username); err != nil {
-		tx.Rollback()
+func (r *UserRepositoryImpl) SearchByUserName(username string) (UserSlice, error) {
+	var res UserSlice
+	if err := r.db.Select(&res, `select * from users where user_name ILIKE $1`, "%"+username+"%"); err != nil {
 		return nil, err
 	}
+	return res, nil
+}
 
-	tx.Commit()
+func (r *UserRepositoryImpl) GetByExactUserName(username string) (*User, error) {
+	var res User
+	if err := r.db.Get(&res, `select * from users where user_name = $1`, username); err != nil {
+		return nil, err
+	}
 	return &res, nil
 }
 
 func (r *UserRepositoryImpl) Login(username, password string) (*User, error) {
-	tx := r.db.MustBegin()
-
 	var res User
-	if err := tx.Get(&res, `select * from users where user_name = $1 and password = $2 limit 1`, username, password); err != nil {
-		tx.Rollback()
+	if err := r.db.Get(&res, `select * from users where user_name = $1 and password = $2 limit 1`, username, password); err != nil {
 		return nil, err
 	}
-
-	tx.Commit()
 	return &res, nil
 }

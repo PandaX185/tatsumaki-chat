@@ -10,7 +10,7 @@ func NewService(r ChatRepository) *ChatService {
 	}
 }
 
-func (s *ChatService) Create(chat Chat) (*Chat, error) {
+func (s *ChatService) Create(chat ChatRequest) (*ChatResponse, error) {
 	res, err := s.repository.Create(chat)
 	if err != nil {
 		return nil, err

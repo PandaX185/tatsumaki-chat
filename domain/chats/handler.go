@@ -5,9 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
-
-	"github.com/PandaX185/tatsumaki-chat/domain/errors"
-	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
 )
 
 type ChatHandler struct {
@@ -23,11 +20,7 @@ func NewHandler(s *ChatService) *ChatHandler {
 func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 	var body ChatRequest
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.BAD_REQUEST,
-			Message: "Error parsing request body",
-		}
-		fmt.Println(jsonErr)
+		fmt.Printf("err: %v\n", err)
 		return
 	}
 
@@ -37,11 +30,7 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.Create(body)
 	if err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.INTERNAL,
-			Message: "Error creating the chat: " + err.Error(),
-		}
-		fmt.Println(jsonErr)
+		fmt.Printf("err: %v\n", err)
 		return
 	}
 
@@ -56,11 +45,7 @@ func (h *ChatHandler) GetAllChats(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.GetAllChats(int(user))
 	if err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.INTERNAL,
-			Message: "Error getting chats: " + err.Error(),
-		}
-		fmt.Println(jsonErr)
+		fmt.Printf("err: %v\n", err)
 		return
 	}
 

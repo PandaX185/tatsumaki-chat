@@ -52,7 +52,7 @@ func (c *ChatRepositoryImpl) Create(chat ChatRequest) (*ChatResponse, error) {
 		return nil, err
 	}
 
-	query, args, err := sqlx.In(`SELECT id FROM users WHERE user_name IN (?)`, chat.ChatMembers)
+	query, args, err := sqlx.In(`SELECT id FROM users WHERE username IN (?)`, chat.ChatMembers)
 	if err != nil {
 		tx.Rollback()
 		return nil, err

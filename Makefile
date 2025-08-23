@@ -21,5 +21,5 @@ run-all:
 	clear
 	docker-compose down
 	docker-compose up -d
-	sleep 2
+	sleep 3
 	go run main.go

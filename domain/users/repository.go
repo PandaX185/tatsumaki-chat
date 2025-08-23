@@ -24,14 +24,14 @@ func NewRepository() UserRepository {
 
 func (r *UserRepositoryImpl) Save(user User) (*User, error) {
 	tx := r.db.MustBegin()
-	_, err := tx.NamedExec(`insert into users (user_name, full_name, password) values (:user_name, :full_name, :password)`, user)
+	_, err := tx.NamedExec(`insert into users (username, fullname, password) values (:username, :fullname, :password)`, user)
 	if err != nil {
 		tx.Rollback()
 		return nil, err
 	}
 
 	var res User
-	if err = tx.Get(&res, `select * from users where user_name = $1 limit 1`, user.UserName); err != nil {
+	if err = tx.Get(&res, `select * from users where username = $1 limit 1`, user.UserName); err != nil {
 		tx.Rollback()
 		return nil, err
 	}
@@ -42,7 +42,7 @@ func (r *UserRepositoryImpl) Save(user User) (*User, error) {
 
 func (r *UserRepositoryImpl) SearchByUserName(username string) (UserSlice, error) {
 	var res UserSlice
-	if err := r.db.Select(&res, `select * from users where user_name ILIKE $1`, "%"+username+"%"); err != nil {
+	if err := r.db.Select(&res, `select * from users where username ILIKE $1`, "%"+username+"%"); err != nil {
 		return nil, err
 	}
 	return res, nil
@@ -50,7 +50,7 @@ func (r *UserRepositoryImpl) SearchByUserName(username string) (UserSlice, error
 
 func (r *UserRepositoryImpl) GetByExactUserName(username string) (*User, error) {
 	var res User
-	if err := r.db.Get(&res, `select * from users where user_name = $1`, username); err != nil {
+	if err := r.db.Get(&res, `select * from users where username = $1`, username); err != nil {
 		return nil, err
 	}
 	return &res, nil
@@ -58,7 +58,7 @@ func (r *UserRepositoryImpl) GetByExactUserName(username string) (*User, error) 
 
 func (r *UserRepositoryImpl) Login(username, password string) (*User, error) {
 	var res User
-	if err := r.db.Get(&res, `select * from users where user_name = $1 and password = $2 limit 1`, username, password); err != nil {
+	if err := r.db.Get(&res, `select * from users where username = $1 and password = $2 limit 1`, username, password); err != nil {
 		return nil, err
 	}
 	return &res, nil

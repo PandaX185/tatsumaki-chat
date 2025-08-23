@@ -8,8 +8,8 @@ import (
 
 type User struct {
 	Id        int          `json:"id" db:"id"`
-	FullName  string       `json:"full_name" db:"full_name"`
-	UserName  string       `json:"user_name" db:"user_name"`
+	FullName  string       `json:"fullname" db:"fullname"`
+	UserName  string       `json:"username" db:"username"`
 	Password  string       `json:"password" db:"password"`
 	CreatedAt time.Time    `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time    `json:"updated_at" db:"updated_at"`
@@ -37,8 +37,8 @@ func (u User) ToShortUserResponse() map[string]string {
 func (u User) ToDetailedUserResponse() map[string]interface{} {
 	return map[string]interface{}{
 		"id":         strconv.FormatInt(int64(u.Id), 10),
-		"full_name":  u.FullName,
-		"user_name":  u.UserName,
+		"fullname":   u.FullName,
+		"username":   u.UserName,
 		"created_at": u.CreatedAt.Format(time.RFC3339),
 		"updated_at": u.UpdatedAt.Format(time.RFC3339),
 	}

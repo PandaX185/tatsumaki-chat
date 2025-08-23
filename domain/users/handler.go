@@ -2,7 +2,6 @@ package users
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
@@ -67,7 +66,7 @@ func (h *UserHandler) RegisterUser(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-func (h *UserHandler) SearchByUsername(w http.ResponseWriter, r *http.Request) {
+func (h *UserHandler) SearchByUserName(w http.ResponseWriter, r *http.Request) {
 	username := r.PathValue("username")
 
 	res, err := h.service.SearchByUserName(username)
@@ -127,7 +126,6 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 func (h *UserHandler) GetCurrentUserData(w http.ResponseWriter, r *http.Request) {
 	username := r.Context().Value("username").(string)
-	fmt.Printf("username: %v\n", username)
 	res, err := h.service.GetByExactUserName(username)
 	if err != nil {
 		jsonErr := errors.JsonError{
@@ -138,7 +136,6 @@ func (h *UserHandler) GetCurrentUserData(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	fmt.Printf("res: %v\n", res.ToDetailedUserResponse())
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(res.ToDetailedUserResponse())
 }

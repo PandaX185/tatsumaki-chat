@@ -15,6 +15,7 @@ type Message struct {
 	Id       int    `json:"id" db:"id"`
 	ChatId   int    `json:"chat_id" db:"cid"`
 	SenderId int    `json:"sender_id" db:"sender_id"`
+	UserName string `json:"username" db:"username"`
 	Content  string `json:"content" db:"content"`
 
 	CreatedAt time.Time `json:"created_at" db:"created_at"`

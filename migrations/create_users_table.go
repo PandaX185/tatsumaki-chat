@@ -8,8 +8,8 @@ func createUsersTable(db *sqlx.DB) error {
 	query := `
 	create table if not exists users (
 		id serial primary key,
-		full_name text not null,
-		user_name text not null unique,
+		fullname text not null,
+		username text not null unique,
 		password text not null,
 
 		created_at timestamp default now(),

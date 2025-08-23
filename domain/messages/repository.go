@@ -24,7 +24,14 @@ func (r *MessageRepositoryImpl) GetAll(chat_id, user_id int) ([]shared.Message, 
 	tx := r.db.MustBegin()
 	var res []shared.Message
 
-	if err := tx.Select(&res, `select messages.* from messages join users_chats on messages.cid = users_chats.cid where users_chats.cid = $1 and uid = $2`, chat_id, user_id); err != nil {
+	if err := tx.Select(&res, `
+	       select messages.*, users.username 
+	       from messages 
+	       join users on messages.sender_id = users.id 
+	       join users_chats on messages.cid = users_chats.cid 
+	       where users_chats.cid = $1 and uid = $2
+		   order by messages.created_at
+       `, chat_id, user_id); err != nil {
 		return nil, err
 	}
 

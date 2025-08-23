@@ -1,5 +1,7 @@
 package chats
 
+import "github.com/PandaX185/tatsumaki-chat/domain/shared"
+
 type ChatService struct {
 	repository ChatRepository
 }
@@ -19,7 +21,7 @@ func (s *ChatService) Create(chat ChatRequest) (*ChatResponse, error) {
 	return res, nil
 }
 
-func (s *ChatService) GetAllChats(userId int) ([]Chat, error) {
+func (s *ChatService) GetAllChats(userId int) ([]shared.Chat, error) {
 	res, err := s.repository.GetAllChats(userId)
 	if err != nil {
 		return nil, err

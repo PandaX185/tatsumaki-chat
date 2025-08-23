@@ -9,6 +9,7 @@ func createChatsTable(db *sqlx.DB) error {
 		chat_name text not null,
 		chat_owner int not null,
 		created_at timestamp not null default now(),
+		updated_at timestamp not null default now(),
 
 		constraint fk_chat_owner foreign key (chat_owner) references users(id) on delete cascade
 	)

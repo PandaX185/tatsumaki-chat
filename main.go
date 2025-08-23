@@ -8,6 +8,7 @@ import (
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/chats"
 	"github.com/PandaX185/tatsumaki-chat/domain/messages"
+	"github.com/PandaX185/tatsumaki-chat/domain/shared"
 	"github.com/PandaX185/tatsumaki-chat/domain/users"
 	"github.com/PandaX185/tatsumaki-chat/middlewares"
 	"github.com/PandaX185/tatsumaki-chat/migrations"
@@ -61,7 +62,7 @@ func main() {
 	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats) // Correct
 
 	// Message routes
-	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository()))
+	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository(), shared.NewRepository()))
 	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)                                                               // Correct
 	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)                                                   // Correct
 	mux.Handle("GET /api/realtime/messages", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetMessagesRealtime))) // Correct

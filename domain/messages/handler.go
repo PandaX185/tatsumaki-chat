@@ -1,6 +1,7 @@
 package messages
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
+	"github.com/PandaX185/tatsumaki-chat/domain/shared"
 )
 
 type MessageHandler struct {
@@ -22,19 +24,20 @@ func NewHandler(s *MessageService) *MessageHandler {
 }
 
 func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
-	var body Message
+	var body shared.Message
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.BAD_REQUEST,
 			Message: "Error parsing request body",
 		}
+		fmt.Printf("body: %v\n", body)
+		fmt.Printf("err: %v\n", err)
 		jsonErr.ReturnError(w)
 		return
 	}
 
-	userId := r.Context().Value("userId")
-	userIdInt, _ := strconv.ParseInt(userId.(string), 10, 32)
-	body.SenderId = int(userIdInt)
+	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
+	body.SenderId = userId
 
 	res, err := h.service.Send(body)
 	if err != nil {
@@ -44,13 +47,6 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 		}
 		jsonErr.ReturnError(w)
 		return
-	}
-
-	rds := config.GetRedis()
-	messageJson, _ := json.Marshal(res)
-
-	for _, userId := range h.service.GetChatMembers(body.ChatId) {
-		rds.Publish(r.Context(), fmt.Sprintf("messages:%d", userId), string(messageJson))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -91,14 +87,10 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Cache-Control", "no-cache")
 	w.Header().Set("Connection", "keep-alive")
 
-	userId, err := strconv.Atoi(r.Context().Value("userId").(string))
-	if err != nil {
-		http.Error(w, "Invalid user data format", http.StatusInternalServerError)
-		return
-	}
+	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
 
 	rds := config.GetRedis()
-	pubsub := rds.Subscribe(r.Context(), fmt.Sprintf("messages:%v", userId))
+	pubsub := rds.Subscribe(context.Background(), fmt.Sprintf("messages:%d", userId))
 	defer pubsub.Close()
 
 	ch := pubsub.Channel()
@@ -111,17 +103,19 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 	fmt.Fprintf(w, "event: connected\ndata: Connected to user %v\n\n", userId)
 	flusher.Flush()
 
+	fmt.Printf("User %v connected\n", userId)
 	notify := r.Context().Done()
 	for {
 		select {
 		case <-notify:
+			fmt.Printf("User %v disconnected\n", userId)
 			return
 		case msg, ok := <-ch:
 			if !ok {
 				fmt.Printf("PubSub channel closed for user %v\n", userId)
 				return
 			}
-
+			fmt.Printf("msg: %v\n", msg.Payload)
 			fmt.Fprintf(w, "event: msg\ndata: %v\n\n", msg.Payload)
 			flusher.Flush()
 		}

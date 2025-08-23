@@ -8,19 +8,10 @@ import (
 
 	"github.com/PandaX185/tatsumaki-chat/domain/errors"
 	"github.com/PandaX185/tatsumaki-chat/domain/errors/codes"
-	"github.com/gorilla/websocket"
 )
 
 type ChatHandler struct {
 	service *ChatService
-}
-
-var upgrader websocket.Upgrader = websocket.Upgrader{
-	ReadBufferSize:  1024,
-	WriteBufferSize: 1024,
-	CheckOrigin: func(r *http.Request) bool {
-		return true
-	},
 }
 
 func NewHandler(s *ChatService) *ChatHandler {
@@ -60,10 +51,10 @@ func (h *ChatHandler) CreateChat(w http.ResponseWriter, r *http.Request) {
 
 func (h *ChatHandler) GetAllChats(w http.ResponseWriter, r *http.Request) {
 
-	chatOwner := r.Context().Value("userId")
-	owner, _ := strconv.ParseInt(chatOwner.(string), 10, 32)
+	userId := r.Context().Value("userId")
+	user, _ := strconv.ParseInt(userId.(string), 10, 32)
 
-	res, err := h.service.GetAllChats(int(owner))
+	res, err := h.service.GetAllChats(int(user))
 	if err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.INTERNAL,

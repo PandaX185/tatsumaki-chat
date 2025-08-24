@@ -21,3 +21,8 @@ type Message struct {
 	CreatedAt time.Time `json:"created_at" db:"created_at"`
 	UpdatedAt time.Time `json:"updated_at" db:"updated_at"`
 }
+
+type UnreadMessagesCount struct {
+	Count  int `json:"unread_count" db:"unread_count"`
+	ChatId int `json:"chat_id" db:"cid"`
+}

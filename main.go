@@ -51,22 +51,23 @@ func main() {
 
 	// User routes
 	userHandler := users.NewHandler(users.NewService(users.NewRepository()))
-	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)               // Correct
-	mux.HandleFunc("GET /api/users/current", userHandler.GetCurrentUserData)  // Correct
-	mux.HandleFunc("GET /api/users/{username}", userHandler.SearchByUserName) // Correct
-	mux.HandleFunc("POST /api/users/login", userHandler.Login)                // Correct
+	mux.HandleFunc("POST /api/users", userHandler.RegisterUser)
+	mux.HandleFunc("GET /api/users/current", userHandler.GetCurrentUserData)
+	mux.HandleFunc("GET /api/users/{username}", userHandler.SearchByUserName)
+	mux.HandleFunc("POST /api/users/login", userHandler.Login)
 
 	// Chat routes
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
-	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat) // Correct
-	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats) // Correct
+	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat)
+	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats)
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository(), shared.NewRepository()))
-	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage) // Correct
-	mux.HandleFunc("GET /api/messages/unread", messageHandler.GetUnreadMessagesCount)
-	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)                                                   // Correct
-	mux.Handle("GET /api/realtime/messages", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetMessagesRealtime))) // Correct
+	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)
+	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)
+	mux.Handle("GET /api/realtime/messages", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetMessagesRealtime)))
+	mux.Handle("GET /api/realtime/messages/unread", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetUnreadMessagesCount)))
+	mux.HandleFunc("POST /api/messages/{chat_id}/read", messageHandler.MarkAsRead)
 
 	handler := cors.AllowAll().Handler(mux)
 	logger.Infof("Starting server on port %v...\n", path)

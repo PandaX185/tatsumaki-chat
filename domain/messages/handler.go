@@ -84,16 +84,13 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 	fmt.Fprintf(w, "event: connected\ndata: Connected to user %v\n\n", userId)
 	flusher.Flush()
 
-	fmt.Printf("User %v connected\n", userId)
 	notify := r.Context().Done()
 	for {
 		select {
 		case <-notify:
-			fmt.Printf("User %v disconnected\n", userId)
 			return
 		case msg, ok := <-ch:
 			if !ok {
-				fmt.Printf("PubSub channel closed for user %v\n", userId)
 				return
 			}
 			fmt.Printf("msg: %v\n", msg.Payload)
@@ -104,7 +101,18 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 }
 
 func (h *MessageHandler) GetUnreadMessagesCount(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/event-stream")
+	w.Header().Set("Cache-Control", "no-cache")
+	w.Header().Set("Connection", "keep-alive")
+
 	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
+
+	notify := r.Context().Done()
+	flusher, ok := w.(http.Flusher)
+	if !ok {
+		http.Error(w, "Streaming unsupported!", http.StatusInternalServerError)
+		return
+	}
 
 	count, err := h.service.GetUnreadMessagesCount(userId)
 	if err != nil {
@@ -112,8 +120,60 @@ func (h *MessageHandler) GetUnreadMessagesCount(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	fmt.Printf("count: %v\n", count)
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(codes.OK)
-	json.NewEncoder(w).Encode(count)
+	jsonCount, _ := json.Marshal(count)
+	fmt.Fprintf(w, "event: unread\ndata: %s\n\n", jsonCount)
+	flusher.Flush()
+
+	unreadPubSub := config.GetRedis().Subscribe(context.Background(), fmt.Sprintf("unread:%d", userId))
+	defer unreadPubSub.Close()
+
+	readPubSub := config.GetRedis().Subscribe(context.Background(), fmt.Sprintf("read:%d", userId))
+	defer readPubSub.Close()
+
+	unreadCh := unreadPubSub.Channel()
+	readCh := readPubSub.Channel()
+
+	var messages []shared.UnreadMessagesCount
+	for {
+		select {
+		case <-notify:
+			return
+		case msg := <-unreadCh:
+			fmt.Fprintf(w, "event: unread\ndata: %v\n\n", msg.Payload)
+			var unread []shared.UnreadMessagesCount
+			if err := json.Unmarshal([]byte(msg.Payload), &unread); err == nil {
+				messages = unread
+			}
+			flusher.Flush()
+		case msg := <-readCh:
+			var readChatId int
+			tmpMessages := []shared.UnreadMessagesCount{}
+			if err := json.Unmarshal([]byte(msg.Payload), &readChatId); err == nil {
+				for i := range messages {
+					if messages[i].ChatId != readChatId {
+						tmpMessages = append(tmpMessages, messages[i])
+					}
+				}
+				messages = tmpMessages
+			}
+
+			fmt.Fprintf(w, "event: unread\ndata: %v\n\n", messages)
+			flusher.Flush()
+		}
+	}
+}
+
+func (h *MessageHandler) MarkAsRead(w http.ResponseWriter, r *http.Request) {
+	chatId, _ := strconv.Atoi(r.PathValue("chat_id"))
+	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
+	if err := h.service.MarkAsRead(chatId, userId); err != nil {
+		jsonErr := errors.JsonError{
+			Code:    codes.INTERNAL,
+			Message: "Error marking message as read: " + err.Error(),
+		}
+		jsonErr.ReturnError(w)
+		return
+	}
+
+	w.WriteHeader(codes.NO_CONTENT)
 }

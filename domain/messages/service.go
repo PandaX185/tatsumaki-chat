@@ -15,27 +15,17 @@ func NewService(r MessageRepository, s shared.SharedRepository) *MessageService 
 }
 
 func (s *MessageService) Send(m shared.Message) (*shared.Message, error) {
-	res, err := s.sharedRepo.SendMessage(m)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.sharedRepo.SendMessage(m)
 }
 
 func (s *MessageService) GetAll(chat_id, user_id int) ([]shared.Message, error) {
-	res, err := s.repository.GetAll(chat_id, user_id)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.GetAll(chat_id, user_id)
 }
 
-func (s *MessageService) GetUnreadMessagesCount(user_id int) ([]UnreadMessagesCount, error) {
-	count, err := s.repository.GetUnreadMessagesCount(user_id)
-	if err != nil {
-		return nil, err
-	}
-	return count, nil
+func (s *MessageService) GetUnreadMessagesCount(user_id int) ([]shared.UnreadMessagesCount, error) {
+	return s.sharedRepo.GetUnreadMessagesCount(user_id)
+}
+
+func (s *MessageService) MarkAsRead(chat_id, user_id int) error {
+	return s.repository.MarkAsRead(chat_id, user_id)
 }

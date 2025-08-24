@@ -23,38 +23,18 @@ func hashPassword(password string) string {
 
 func (s *UserService) Save(user User) (*User, error) {
 	user.Password = hashPassword(user.Password)
-	res, err := s.repository.Save(user)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.Save(user)
 }
 
 func (s *UserService) GetByExactUserName(username string) (*User, error) {
-	res, err := s.repository.GetByExactUserName(username)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.GetByExactUserName(username)
 }
 
 func (s *UserService) SearchByUserName(username string) (UserSlice, error) {
-	res, err := s.repository.SearchByUserName(username)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.SearchByUserName(username)
 }
 
 func (s *UserService) Login(username, password string) (*User, error) {
 	password = hashPassword(password)
-	res, err := s.repository.Login(username, password)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.Login(username, password)
 }

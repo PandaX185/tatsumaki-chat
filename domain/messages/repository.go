@@ -1,7 +1,8 @@
 package messages
 
 import (
-	"strings"
+	"context"
+	"fmt"
 
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/shared"
@@ -10,7 +11,7 @@ import (
 
 type MessageRepository interface {
 	GetAll(int, int) ([]shared.Message, error)
-	GetUnreadMessagesCount(int) ([]UnreadMessagesCount, error)
+	MarkAsRead(int, int) error
 }
 
 type MessageRepositoryImpl struct {
@@ -41,19 +42,19 @@ func (r *MessageRepositoryImpl) GetAll(chat_id, user_id int) ([]shared.Message, 
 	return res, nil
 }
 
-func (r *MessageRepositoryImpl) GetUnreadMessagesCount(user_id int) ([]UnreadMessagesCount, error) {
-	var count []UnreadMessagesCount
+func (r *MessageRepositoryImpl) MarkAsRead(chat_id, user_id int) error {
+	tx := r.db.MustBegin()
 
-	if err := r.db.Select(&count, `
-		SELECT unread_count, cid
-		FROM unread_chats
-		WHERE uid = $1
-		GROUP BY cid, unread_count
-	`, user_id); err != nil {
-		if !strings.Contains(err.Error(), "no rows") {
-			return nil, err
-		}
+	if _, err := tx.Exec(`update unread_chats set unread_count = 0 where cid = $1 and uid = $2`, chat_id, user_id); err != nil {
+		tx.Rollback()
+		return err
 	}
 
-	return count, nil
+	if err := config.GetRedis().Publish(context.Background(), fmt.Sprintf("read:%d", user_id), chat_id).Err(); err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	tx.Commit()
+	return nil
 }

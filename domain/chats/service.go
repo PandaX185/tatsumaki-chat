@@ -13,19 +13,9 @@ func NewService(r ChatRepository) *ChatService {
 }
 
 func (s *ChatService) Create(chat ChatRequest) (*ChatResponse, error) {
-	res, err := s.repository.Create(chat)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.Create(chat)
 }
 
 func (s *ChatService) GetAllChats(userId int) ([]shared.Chat, error) {
-	res, err := s.repository.GetAllChats(userId)
-	if err != nil {
-		return nil, err
-	}
-
-	return res, nil
+	return s.repository.GetAllChats(userId)
 }

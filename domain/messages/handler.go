@@ -70,7 +70,7 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 
 	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
 
-	rds := config.GetRedis()
+	rds := config.GetPubSubClient()
 	pubsub := rds.Subscribe(context.Background(), fmt.Sprintf("messages:%d", userId))
 	defer pubsub.Close()
 
@@ -93,7 +93,6 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 			if !ok {
 				return
 			}
-			fmt.Printf("msg: %v\n", msg.Payload)
 			fmt.Fprintf(w, "event: msg\ndata: %v\n\n", msg.Payload)
 			flusher.Flush()
 		}
@@ -124,10 +123,10 @@ func (h *MessageHandler) GetUnreadMessagesCount(w http.ResponseWriter, r *http.R
 	fmt.Fprintf(w, "event: unread\ndata: %s\n\n", jsonCount)
 	flusher.Flush()
 
-	unreadPubSub := config.GetRedis().Subscribe(context.Background(), fmt.Sprintf("unread:%d", userId))
+	unreadPubSub := config.GetPubSubClient().Subscribe(context.Background(), fmt.Sprintf("unread:%d", userId))
 	defer unreadPubSub.Close()
 
-	readPubSub := config.GetRedis().Subscribe(context.Background(), fmt.Sprintf("read:%d", userId))
+	readPubSub := config.GetPubSubClient().Subscribe(context.Background(), fmt.Sprintf("read:%d", userId))
 	defer readPubSub.Close()
 
 	unreadCh := unreadPubSub.Channel()

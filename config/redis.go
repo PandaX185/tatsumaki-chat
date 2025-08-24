@@ -16,3 +16,9 @@ func GetRedis() *redis.Client {
 	}
 	return redisInstance
 }
+
+func GetPubSubClient() *redis.Client {
+	return redis.NewClient(&redis.Options{
+		Addr: os.Getenv("REDIS_URL"),
+	})
+}

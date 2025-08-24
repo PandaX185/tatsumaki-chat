@@ -60,6 +60,9 @@ func main() {
 	chatHandler := chats.NewHandler(chats.NewService(chats.NewRepository()))
 	mux.HandleFunc("POST /api/chats", chatHandler.CreateChat)
 	mux.HandleFunc("GET /api/chats", chatHandler.GetAllChats)
+	mux.HandleFunc("DELETE /api/chats/{chat_id}", chatHandler.Delete)
+	mux.HandleFunc("PATCH /api/chats/{chat_id}", chatHandler.Edit)
+	mux.HandleFunc("GET /api/chats/{chat_id}/members", chatHandler.GetChatMembers)
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository(), shared.NewRepository()))

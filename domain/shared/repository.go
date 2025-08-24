@@ -67,26 +67,29 @@ func (r *SharedRepositoryImpl) SendMessage(m Message) (*Message, error) {
 
 	rds := config.GetRedis()
 	messageJson, _ := json.Marshal(m)
+	chatMembers := r.GetChatMembers(m.ChatId)
 
-	for _, userId := range r.GetChatMembers(m.ChatId) {
+	for _, userId := range chatMembers {
 		channelName := fmt.Sprintf("messages:%d", userId)
 		if err := rds.Publish(context.Background(), channelName, string(messageJson)).Err(); err != nil {
 			fmt.Printf("Error publishing message to channel %v: %v\n", channelName, err)
-		}
-		channelName = fmt.Sprintf("unread:%d", userId)
-		if userId == m.SenderId {
-			continue
 		}
 
 		if err := incrementUnreadCount(tx, m, userId); err != nil {
 			tx.Rollback()
 			return nil, err
 		}
-		tx.Commit()
-
+	}
+	tx.Commit()
+	for _, userId := range chatMembers {
 		count, err := r.GetUnreadMessagesCount(userId)
 		if err != nil {
 			return nil, err
+		}
+
+		channelName := fmt.Sprintf("unread:%d", userId)
+		if userId == m.SenderId {
+			continue
 		}
 
 		messageJson, _ = json.Marshal(count)

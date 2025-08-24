@@ -31,3 +31,11 @@ func (s *MessageService) GetAll(chat_id, user_id int) ([]shared.Message, error) 
 
 	return res, nil
 }
+
+func (s *MessageService) GetUnreadMessagesCount(user_id int) ([]UnreadMessagesCount, error) {
+	count, err := s.repository.GetUnreadMessagesCount(user_id)
+	if err != nil {
+		return nil, err
+	}
+	return count, nil
+}

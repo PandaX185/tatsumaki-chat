@@ -10,6 +10,7 @@ func Up(db *sqlx.DB) error {
 		createChatsTable(db),
 		createUsersChatsTable(db),
 		createMessagesTable(db),
+		createUnreadChatsTable(db),
 	}
 
 	for _, err := range errs {
@@ -26,6 +27,7 @@ func Down(db *sqlx.DB) error {
 		// rollbackCreateUsersChatsTable(db),
 		// rollbackCreateChatsTable(db),
 		// rollbackCreateUsersTable(db),
+		// rollbackCreateUnreadChatsTable(db),
 	}
 
 	for _, err := range errs {

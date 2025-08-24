@@ -63,7 +63,8 @@ func main() {
 
 	// Message routes
 	messageHandler := messages.NewHandler(messages.NewService(messages.NewRepository(), shared.NewRepository()))
-	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage)                                                               // Correct
+	mux.HandleFunc("POST /api/messages", messageHandler.SendMessage) // Correct
+	mux.HandleFunc("GET /api/messages/unread", messageHandler.GetUnreadMessagesCount)
 	mux.HandleFunc("GET /api/messages/{chat_id}", messageHandler.GetAllMessages)                                                   // Correct
 	mux.Handle("GET /api/realtime/messages", middlewares.VerifyJwtFromQuery(http.HandlerFunc(messageHandler.GetMessagesRealtime))) // Correct
 

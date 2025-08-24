@@ -26,13 +26,7 @@ func NewHandler(s *MessageService) *MessageHandler {
 func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 	var body shared.Message
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.BAD_REQUEST,
-			Message: "Error parsing request body",
-		}
-		fmt.Printf("body: %v\n", body)
 		fmt.Printf("err: %v\n", err)
-		jsonErr.ReturnError(w)
 		return
 	}
 
@@ -41,11 +35,7 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 
 	res, err := h.service.Send(body)
 	if err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.INTERNAL,
-			Message: "Error sending the message: " + err.Error(),
-		}
-		jsonErr.ReturnError(w)
+		fmt.Printf("err: %v\n", err)
 		return
 	}
 
@@ -55,19 +45,10 @@ func (h *MessageHandler) SendMessage(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MessageHandler) GetAllMessages(w http.ResponseWriter, r *http.Request) {
-	chat_id, err := strconv.ParseInt(r.PathValue("chat_id"), 10, 64)
-	if err != nil {
-		jsonErr := errors.JsonError{
-			Code:    codes.BAD_REQUEST,
-			Message: "Provide a correct chat id",
-		}
-		jsonErr.ReturnError(w)
-		return
-	}
-	userId := r.Context().Value("userId")
-	userIdInt, _ := strconv.ParseInt(userId.(string), 10, 32)
+	chatId, _ := strconv.Atoi(r.PathValue("chat_id"))
+	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
 
-	res, err := h.service.GetAll(int(chat_id), int(userIdInt))
+	res, err := h.service.GetAll(chatId, userId)
 	if err != nil {
 		jsonErr := errors.JsonError{
 			Code:    codes.INTERNAL,
@@ -120,4 +101,19 @@ func (h *MessageHandler) GetMessagesRealtime(w http.ResponseWriter, r *http.Requ
 			flusher.Flush()
 		}
 	}
+}
+
+func (h *MessageHandler) GetUnreadMessagesCount(w http.ResponseWriter, r *http.Request) {
+	userId, _ := strconv.Atoi(r.Context().Value("userId").(string))
+
+	count, err := h.service.GetUnreadMessagesCount(userId)
+	if err != nil {
+		fmt.Printf("err: %v\n", err)
+		return
+	}
+
+	fmt.Printf("count: %v\n", count)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(codes.OK)
+	json.NewEncoder(w).Encode(count)
 }

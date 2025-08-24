@@ -1,6 +1,8 @@
 package messages
 
 import (
+	"strings"
+
 	"github.com/PandaX185/tatsumaki-chat/config"
 	"github.com/PandaX185/tatsumaki-chat/domain/shared"
 	"github.com/jmoiron/sqlx"
@@ -8,6 +10,7 @@ import (
 
 type MessageRepository interface {
 	GetAll(int, int) ([]shared.Message, error)
+	GetUnreadMessagesCount(int) ([]UnreadMessagesCount, error)
 }
 
 type MessageRepositoryImpl struct {
@@ -36,4 +39,21 @@ func (r *MessageRepositoryImpl) GetAll(chat_id, user_id int) ([]shared.Message, 
 	}
 
 	return res, nil
+}
+
+func (r *MessageRepositoryImpl) GetUnreadMessagesCount(user_id int) ([]UnreadMessagesCount, error) {
+	var count []UnreadMessagesCount
+
+	if err := r.db.Select(&count, `
+		SELECT unread_count, cid
+		FROM unread_chats
+		WHERE uid = $1
+		GROUP BY cid, unread_count
+	`, user_id); err != nil {
+		if !strings.Contains(err.Error(), "no rows") {
+			return nil, err
+		}
+	}
+
+	return count, nil
 }
